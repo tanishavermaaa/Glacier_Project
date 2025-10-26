@@ -51,6 +51,12 @@ def load_data(filepath):
         # Drop rows again after coercion just in case
         df = df.dropna(subset=required_cols)
         
+        # **NEW FIX**: Check for infinite values (np.inf, -np.inf)
+        # The ML model (MinMaxScaler) can't handle infinite values.
+        # We will replace 'inf' and '-inf' with 'NaN', then drop those rows.
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        df = df.dropna(subset=required_cols)
+        
         return df
         
     except FileNotFoundError:
@@ -225,4 +231,5 @@ def main():
 # This line tells Python to run the "main()" function when you execute the file
 if __name__ == "__main__":
     main()
+
 
