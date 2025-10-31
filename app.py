@@ -1,35 +1,20 @@
-# --- This is your main project file ---
-# This code is MODIFIED to use your 'glacier_final_cleaned_ready.csv' file.
-#
-# This file contains 'melt_rate', 'lat', and 'lon'.
-# We will follow your project plan by using K-Means Clustering
-# on the 'melt_rate' to categorize glaciers.
 
-# --- 1. Import all the libraries ---
 import streamlit as st
 import pandas as pd
 import numpy as np
-import folium  # Used to create the interactive map
-from streamlit_folium import st_folium  # This displays the map in Streamlit
-from sklearn.preprocessing import MinMaxScaler  # To normalize data (Step 2)
-from sklearn.cluster import KMeans  # (Step 4)
+import folium
+from streamlit_folium import st_folium  
+from sklearn.preprocessing import MinMaxScaler  
+from sklearn.cluster import KMeans  
 
-# --- 2. Set up the Streamlit page ---
 st.set_page_config(layout="wide", page_title="Global Glacier Health Index")
 
-# --- 3. Define the Core Functions ---
-
-@st.cache_data  # This tells Streamlit to "remember" the data
+@st.cache_data  
 def load_data(filepath):
-    """
-    This function loads YOUR 'glacier_final_cleaned_ready.csv' file.
-    """
+    
     try:
-        # **MODIFICATION**: Read the new CSV file.
-        # This file has a standard header, so no 'header=5' is needed.
         df = pd.read_csv(filepath)
-        
-        # **MODIFICATION**: Let's rename columns for easier use
+   
         df = df.rename(columns={
             'glac_id': 'RGI_ID',
             'melt_rate': 'Melt_Rate',
@@ -37,23 +22,18 @@ def load_data(filepath):
             'lon': 'Longitude'
         })
         
-        # These are the 4 columns we absolutely need for the app
+
         required_cols = ['RGI_ID', 'Latitude', 'Longitude', 'Melt_Rate']
-        
-        # Drop any rows that are missing these critical values
+
         df = df.dropna(subset=required_cols)
-        
-        # Ensure data is numeric
+
         df['Latitude'] = pd.to_numeric(df['Latitude'], errors='coerce')
         df['Longitude'] = pd.to_numeric(df['Longitude'], errors='coerce')
         df['Melt_Rate'] = pd.to_numeric(df['Melt_Rate'], errors='coerce')
         
-        # Drop rows again after coercion just in case
+
         df = df.dropna(subset=required_cols)
-        
-        # **NEW FIX**: Check for infinite values (np.inf, -np.inf)
-        # The ML model (MinMaxScaler) can't handle infinite values.
-        # We will replace 'inf' and '-inf' with 'NaN', then drop those rows.
+
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df = df.dropna(subset=required_cols)
         
@@ -76,35 +56,20 @@ def run_ml_clustering(df):
     """
     df_ml = df.copy()
 
-    # **MODIFICATION**: We are using only 'Melt_Rate'
     features = ['Melt_Rate']
 
-    # --- Preprocessing & Normalization (Step 2 from PDF) ---
     scaler = MinMaxScaler()
-    # We use .values.reshape(-1, 1) because sklearn needs a 2D array
+ 
     data_scaled = scaler.fit_transform(df_ml[features])
 
-    # --- K-Means Clustering (Step 4 from PDF) ---
-    # We will cluster the glaciers into 3 groups
     kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
     
-    # We "fit" the model on our single normalized feature
+
     df_ml['ML_Cluster'] = kmeans.fit_predict(data_scaled)
 
-    # --- Scoring System (Step 5 from PDF) ---
-    # Now we need to figure out which cluster (0, 1, or 2)
-    # represents "Healthy", "Moderate", and "Critical".
-    
-    # Your 'melt_rate' values are negative.
-    # A *more negative* value (e.g., -5e-10) is WORSE (more melt)
-    # than a value *closer to zero* (e.g., -1e-13).
-    
-    # Get the center (average) of each cluster
+
     cluster_centers = kmeans.cluster_centers_
-    
-    # Sort the clusters based on their center value
-    # argsort() gives us the indices from low to high
-    # [lowest_center_index, middle_center_index, highest_center_index]
+
     sorted_cluster_indices = np.argsort(cluster_centers.flatten())
     
     # Create the mapping
@@ -231,5 +196,6 @@ def main():
 # This line tells Python to run the "main()" function when you execute the file
 if __name__ == "__main__":
     main()
+
 
 
